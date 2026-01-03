@@ -1,51 +1,60 @@
+"""Point d'entrée de l'application FastAPI."""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.database import init_db
-from src.api.routes import recipes, shopping
+from src.config import get_settings
 
+settings = get_settings()
+
+# Initialisation de l'application FastAPI
 app = FastAPI(
-    title="Grocery Automation API",
-    description="API pour gérer des recettes et générer automatiquement des listes de courses",
-    version="1.0.0"
+    title=settings.app_name,
+    version=settings.app_version,
+    description="API pour automatiser la planification des repas et listes de courses",
+    docs_url="/docs",  # Swagger UI
+    redoc_url="/redoc"  # ReDoc alternative
 )
 
-# Configuration CORS
+# Configuration CORS Middleware
+# Permet les appels depuis des frontends locaux (React, Vue, etc.)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En production, spécifier les origines autorisées
+    allow_origins=settings.origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialiser la base de données au démarrage
-@app.on_event("startup")
-def on_startup():
-    init_db()
 
+@app.get("/health", tags=["System"])
+def health_check():
+    """Endpoint de health check pour monitoring.
 
-# Routes principales
-@app.get("/", tags=["Root"])
-def read_root():
+    Utilisé par les systèmes de monitoring (Docker, Kubernetes, etc.)
+    pour vérifier que l'application est en vie.
+
+    Returns:
+        dict: Status de l'application, version et environnement
+    """
     return {
-        "message": "Bienvenue sur l'API Grocery Automation",
-        "version": "1.0.0",
-        "documentation": "/docs"
+        "status": "healthy",
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "environment": settings.environment
     }
 
 
-@app.get("/health", tags=["Health"])
-def health_check():
-    return {"status": "healthy"}
+@app.get("/", tags=["System"])
+def root():
+    """Page d'accueil de l'API.
 
+    Renvoie les informations de base et les liens vers la documentation.
 
-# Enregistrer les routers
-app.include_router(recipes.router, prefix="/api")
-app.include_router(recipes.ingredient_router, prefix="/api")
-app.include_router(shopping.router, prefix="/api")
-app.include_router(shopping.planning_router, prefix="/api")
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("src.api.main:app", host="0.0.0.0", port=8000, reload=True)
+    Returns:
+        dict: Message de bienvenue et liens utiles
+    """
+    return {
+        "message": "Grocery Automation API",
+        "docs": "/docs",
+        "health": "/health"
+    }
