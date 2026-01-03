@@ -59,7 +59,7 @@ def init_db() -> None:
     """
     from src.models.base import Base
     # Import explicite de tous les models pour les enregistrer dans Base.metadata
-    from src.models import ingredient, recipe, recipe_ingredient  # noqa: F401
+    from src.models import Ingredient, Recipe, RecipeIngredient  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     print("✅ Database initialized successfully")

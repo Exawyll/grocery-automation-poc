@@ -29,7 +29,7 @@ def db_session() -> Session:
         Session: Session SQLAlchemy connectée à la DB de test
     """
     # Import des models pour créer les tables
-    from src.models import ingredient, recipe, recipe_ingredient  # noqa: F401
+    from src.models import Ingredient, Recipe, RecipeIngredient  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
