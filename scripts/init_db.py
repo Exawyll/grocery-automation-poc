@@ -8,6 +8,13 @@ Usage:
     python scripts/init_db.py
 """
 
+import sys
+from pathlib import Path
+
+# Ajouter le répertoire parent au path pour les imports
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from src.database import init_db
 
 if __name__ == "__main__":
