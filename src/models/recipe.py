@@ -1,78 +1,110 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Table, ForeignKey, Float
-from sqlalchemy.orm import relationship
-from pydantic import BaseModel
-from datetime import datetime
-from src.database import Base
+"""
+Modèles Recipe et RecipeIngredient.
+"""
+import uuid
+from datetime import datetime, timezone
+from decimal import Decimal
 
-
-# Table d'association pour la relation many-to-many entre recettes et ingrédients
-recipe_ingredients = Table(
-    'recipe_ingredients',
-    Base.metadata,
-    Column('recipe_id', Integer, ForeignKey('recipes.id', ondelete='CASCADE'), primary_key=True),
-    Column('ingredient_id', Integer, ForeignKey('ingredients.id', ondelete='CASCADE'), primary_key=True),
-    Column('quantity', Float, nullable=False),
-    Column('unit', String(50), nullable=False)
+from sqlalchemy import (
+    Column, String, Text, Integer, DateTime, ForeignKey,
+    Enum as SQLEnum, Numeric
 )
+from sqlalchemy.orm import relationship
+
+from .base import Base
+from .enums import Season, Difficulty, UnitType
 
 
 class Recipe(Base):
-    """Modèle SQLAlchemy pour les recettes"""
+    """
+    Représente une recette de cuisine.
+
+    Attributes:
+        id: UUID unique de la recette
+        name: Nom de la recette
+        description: Description détaillée (optionnel)
+        season: Saison recommandée
+        difficulty: Niveau de difficulté
+        prep_time_minutes: Temps de préparation en minutes
+        portions: Nombre de personnes servies
+        created_at: Date de création
+        updated_at: Date de dernière modification
+    """
     __tablename__ = "recipes"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(200), nullable=False, index=True)
-    description = Column(Text)
-    servings = Column(Integer, default=4)
-    prep_time = Column(Integer)  # Temps de préparation en minutes
-    cook_time = Column(Integer)  # Temps de cuisson en minutes
-    instructions = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relations
-    ingredients = relationship(
-        "Ingredient",
-        secondary=recipe_ingredients,
-        backref="recipes"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    season = Column(SQLEnum(Season), nullable=False, index=True)
+    difficulty = Column(SQLEnum(Difficulty), nullable=False)
+    prep_time_minutes = Column(Integer, nullable=False)
+    portions = Column(Integer, nullable=False)
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
     )
 
+    # Relationships
+    recipe_ingredients = relationship(
+        "RecipeIngredient",
+        back_populates="recipe",
+        cascade="all, delete-orphan"
+    )
 
-class RecipeIngredient(BaseModel):
-    """Schema Pydantic pour un ingrédient dans une recette"""
-    ingredient_id: int
-    ingredient_name: str | None = None
-    quantity: float
-    unit: str
-
-
-class RecipeCreate(BaseModel):
-    """Schema Pydantic pour créer une recette"""
-    name: str
-    description: str | None = None
-    servings: int = 4
-    prep_time: int | None = None
-    cook_time: int | None = None
-    instructions: str | None = None
-    ingredients: list[RecipeIngredient] = []
+    def __repr__(self):
+        return f"<Recipe(id={self.id}, name='{self.name}', season={self.season})>"
 
 
-class RecipeResponse(BaseModel):
-    """Schema Pydantic pour la réponse d'une recette"""
-    id: int
-    name: str
-    description: str | None
-    servings: int
-    prep_time: int | None
-    cook_time: int | None
-    instructions: str | None
-    created_at: datetime
-    updated_at: datetime
+class RecipeIngredient(Base):
+    """
+    Table d'association entre Recipe et Ingredient avec quantité et unité.
 
-    class Config:
-        from_attributes = True
+    Cette table implémente une relation many-to-many enrichie avec des données
+    supplémentaires (quantity, unit).
 
+    Attributes:
+        recipe_id: FK vers Recipe
+        ingredient_id: FK vers Ingredient
+        quantity: Quantité requise (ex: 2.5)
+        unit: Unité de mesure (ex: KG, PIECE)
+        created_at: Date de création de l'association
+    """
+    __tablename__ = "recipe_ingredients"
 
-class RecipeWithIngredients(RecipeResponse):
-    """Schema Pydantic pour une recette avec ses ingrédients"""
-    ingredients: list[RecipeIngredient] = []
+    recipe_id = Column(
+        String,
+        ForeignKey("recipes.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+    ingredient_id = Column(
+        String,
+        ForeignKey("ingredients.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+    quantity = Column(Numeric(10, 2), nullable=False)
+    unit = Column(SQLEnum(UnitType), nullable=False)
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    recipe = relationship("Recipe", back_populates="recipe_ingredients")
+    ingredient = relationship("Ingredient", back_populates="recipe_ingredients")
+
+    def __repr__(self):
+        return (
+            f"<RecipeIngredient("
+            f"recipe_id={self.recipe_id}, "
+            f"ingredient_id={self.ingredient_id}, "
+            f"quantity={self.quantity} {self.unit}"
+            f")>"
+        )
