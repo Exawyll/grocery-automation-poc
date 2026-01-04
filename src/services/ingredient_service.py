@@ -30,7 +30,7 @@ def create_ingredient(db: Session, data: IngredientCreate) -> Ingredient:
 
 def get_ingredient(db: Session, ingredient_id: UUID) -> Optional[Ingredient]:
     """Récupère un ingrédient par son ID."""
-    return db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
+    return db.query(Ingredient).filter(Ingredient.id == str(ingredient_id)).first()
 
 
 def get_ingredient_by_name(db: Session, name: str) -> Optional[Ingredient]:
