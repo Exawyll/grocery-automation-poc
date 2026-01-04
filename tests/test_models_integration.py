@@ -11,7 +11,7 @@ from src.models import Season, Difficulty, IngredientCategory, UnitType
 class TestRelations:
     """Test suite for bidirectional relationships."""
 
-    def test_recipe_to_ingredients_relation(self, session):
+    def test_recipe_to_ingredients_relation(self, db_session):
         """Test that recipe.recipe_ingredients works correctly."""
         # Create recipe
         recipe = Recipe(
@@ -21,14 +21,14 @@ class TestRelations:
             prep_time_minutes=20,
             portions=4
         )
-        session.add(recipe)
-        session.commit()
+        db_session.add(recipe)
+        db_session.commit()
 
         # Create ingredients
         tomate = Ingredient(name="Tomate", category=IngredientCategory.FRAIS_ARTISAN)
         olive = Ingredient(name="Olives", category=IngredientCategory.FRAIS_GMS)
-        session.add_all([tomate, olive])
-        session.commit()
+        db_session.add_all([tomate, olive])
+        db_session.commit()
 
         # Create associations
         ri1 = RecipeIngredient(
@@ -43,23 +43,23 @@ class TestRelations:
             quantity=Decimal("100.00"),
             unit=UnitType.G
         )
-        session.add_all([ri1, ri2])
-        session.commit()
+        db_session.add_all([ri1, ri2])
+        db_session.commit()
 
         # Test relationship navigation
         assert len(recipe.recipe_ingredients) == 2
         ingredient_names = {ri.ingredient.name for ri in recipe.recipe_ingredients}
         assert ingredient_names == {"Tomate", "Olives"}
 
-    def test_ingredient_to_recipes_relation(self, session):
+    def test_ingredient_to_recipes_relation(self, db_session):
         """Test that ingredient.recipe_ingredients works correctly."""
         # Create ingredient
         ingredient = Ingredient(
             name="Poulet",
             category=IngredientCategory.FRAIS_ARTISAN
         )
-        session.add(ingredient)
-        session.commit()
+        db_session.add(ingredient)
+        db_session.commit()
 
         # Create multiple recipes
         recipe1 = Recipe(
@@ -76,8 +76,8 @@ class TestRelations:
             prep_time_minutes=60,
             portions=4
         )
-        session.add_all([recipe1, recipe2])
-        session.commit()
+        db_session.add_all([recipe1, recipe2])
+        db_session.commit()
 
         # Create associations
         ri1 = RecipeIngredient(
@@ -92,8 +92,8 @@ class TestRelations:
             quantity=Decimal("0.80"),
             unit=UnitType.KG
         )
-        session.add_all([ri1, ri2])
-        session.commit()
+        db_session.add_all([ri1, ri2])
+        db_session.commit()
 
         # Test relationship navigation
         assert len(ingredient.recipe_ingredients) == 2
@@ -104,7 +104,7 @@ class TestRelations:
 class TestCascadeDelete:
     """Test suite for cascade delete behavior."""
 
-    def test_delete_recipe_cascades_to_recipe_ingredients(self, session):
+    def test_delete_recipe_cascades_to_recipe_ingredients(self, db_session):
         """Test that deleting a recipe also deletes its recipe_ingredients."""
         # Create recipe and ingredient
         recipe = Recipe(
@@ -118,8 +118,8 @@ class TestCascadeDelete:
             name="Lardons",
             category=IngredientCategory.FRAIS_GMS
         )
-        session.add_all([recipe, ingredient])
-        session.commit()
+        db_session.add_all([recipe, ingredient])
+        db_session.commit()
 
         # Create association
         recipe_ingredient = RecipeIngredient(
@@ -128,29 +128,29 @@ class TestCascadeDelete:
             quantity=Decimal("200.00"),
             unit=UnitType.G
         )
-        session.add(recipe_ingredient)
-        session.commit()
+        db_session.add(recipe_ingredient)
+        db_session.commit()
 
         recipe_id = recipe.id
         ingredient_id = ingredient.id
 
         # Verify association exists
-        ri_count = session.query(RecipeIngredient).filter_by(recipe_id=recipe_id).count()
+        ri_count = db_session.query(RecipeIngredient).filter_by(recipe_id=recipe_id).count()
         assert ri_count == 1
 
         # Delete recipe
-        session.delete(recipe)
-        session.commit()
+        db_session.delete(recipe)
+        db_session.commit()
 
         # Verify recipe_ingredient was cascade deleted
-        ri_count_after = session.query(RecipeIngredient).filter_by(recipe_id=recipe_id).count()
+        ri_count_after = db_session.query(RecipeIngredient).filter_by(recipe_id=recipe_id).count()
         assert ri_count_after == 0
 
         # Verify ingredient still exists
-        ingredient_still_exists = session.query(Ingredient).filter_by(id=ingredient_id).first()
+        ingredient_still_exists = db_session.query(Ingredient).filter_by(id=ingredient_id).first()
         assert ingredient_still_exists is not None
 
-    def test_delete_ingredient_cascades_to_recipe_ingredients(self, session):
+    def test_delete_ingredient_cascades_to_recipe_ingredients(self, db_session):
         """Test that deleting an ingredient also deletes its recipe_ingredients."""
         # Create recipe and ingredient
         recipe = Recipe(
@@ -164,8 +164,8 @@ class TestCascadeDelete:
             name="Pomme de terre",
             category=IngredientCategory.FRAIS_ARTISAN
         )
-        session.add_all([recipe, ingredient])
-        session.commit()
+        db_session.add_all([recipe, ingredient])
+        db_session.commit()
 
         # Create association
         recipe_ingredient = RecipeIngredient(
@@ -174,24 +174,24 @@ class TestCascadeDelete:
             quantity=Decimal("1.50"),
             unit=UnitType.KG
         )
-        session.add(recipe_ingredient)
-        session.commit()
+        db_session.add(recipe_ingredient)
+        db_session.commit()
 
         recipe_id = recipe.id
         ingredient_id = ingredient.id
 
         # Verify association exists
-        ri_count = session.query(RecipeIngredient).filter_by(ingredient_id=ingredient_id).count()
+        ri_count = db_session.query(RecipeIngredient).filter_by(ingredient_id=ingredient_id).count()
         assert ri_count == 1
 
         # Delete ingredient
-        session.delete(ingredient)
-        session.commit()
+        db_session.delete(ingredient)
+        db_session.commit()
 
         # Verify recipe_ingredient was cascade deleted
-        ri_count_after = session.query(RecipeIngredient).filter_by(ingredient_id=ingredient_id).count()
+        ri_count_after = db_session.query(RecipeIngredient).filter_by(ingredient_id=ingredient_id).count()
         assert ri_count_after == 0
 
         # Verify recipe still exists
-        recipe_still_exists = session.query(Recipe).filter_by(id=recipe_id).first()
+        recipe_still_exists = db_session.query(Recipe).filter_by(id=recipe_id).first()
         assert recipe_still_exists is not None
